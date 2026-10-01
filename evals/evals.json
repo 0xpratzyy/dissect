@@ -1,0 +1,82 @@
+{
+ "skill_name": "dissect",
+ "evals": [
+  {
+   "id": 1,
+   "name": "youtube-mrbeast-opening",
+   "prompt": "i want to steal MrBeast's pacing for my own channel. dissect the first 3 minutes of this and give me a template i can actually follow: https://www.youtube.com/watch?v=0e3GPea1Tyg",
+   "expected_output": "A blueprint .md covering only the opening ~3 minutes: frame-by-frame hook, beat sheet with timestamps, cut rate and words per minute, retention devices, a fill-in script template and ready-to-use prompts, with short quotes only.",
+   "files": [],
+   "assertions": [
+    "A blueprint Markdown file (100+ lines) was produced",
+    "Breaks down the opening seconds in detail (4+ table rows timed within the first 12 s)",
+    "Has a beat sheet with 4+ timestamped beats",
+    "States the cut rate as a number (cuts per minute or average shot length)",
+    "States the speaking pace in words per minute, or notes that there's no speech",
+    "Describes the sound design (music and/or sound effects)",
+    "Includes a fill-in-the-blanks template (5+ placeholders)",
+    "Includes ready-to-paste generation prompts (in code blocks)",
+    "Keeps quotes from the video short (no quoted passage over 25 words)",
+    "Doesn't reproduce the transcript (under 30% of its 6-word runs appear)",
+    "Separates the creator's personal signature from the reusable format",
+    "Analyses the voice beyond pace (4+ of pitch, pauses, emphasis, energy/tone, endings, accent)",
+    "Gives voice direction a narrator or text-to-speech tool could use",
+    "Specifies the on-screen text / caption style concretely (font, colour and position)",
+    "Covers only the requested opening ~3 minutes (no table timestamp past 3:15)",
+    "Uses YouTube audience data (views, likes, comments or most-replayed moments)"
+   ]
+  },
+  {
+   "id": 2,
+   "name": "tiktok-zach-king-illusion",
+   "prompt": "how did zach king pull this off and how is it edited?? break it down frame by frame so i can make something like it https://www.tiktok.com/@zachking/video/6768504823336815877",
+   "expected_output": "A blueprint .md with a frame-by-frame breakdown of the illusion and the edit (cut timings, what each shot shows), sound and music, a correct (positive, ~2.4 billion) view count, and a reusable template for an illusion video.",
+   "files": [],
+   "assertions": [
+    "A blueprint Markdown file (100+ lines) was produced",
+    "Breaks down the opening seconds in detail (4+ table rows timed within the first 12 s)",
+    "Has a beat sheet with 4+ timestamped beats",
+    "States the cut rate as a number (cuts per minute or average shot length)",
+    "States the speaking pace in words per minute, or notes that there's no speech",
+    "Describes the sound design (music and/or sound effects)",
+    "Includes a fill-in-the-blanks template (5+ placeholders)",
+    "Includes ready-to-paste generation prompts (in code blocks)",
+    "Keeps quotes from the video short (no quoted passage over 25 words)",
+    "Doesn't reproduce the transcript (under 30% of its 6-word runs appear)",
+    "Separates the creator's personal signature from the reusable format",
+    "Analyses the voice beyond pace (4+ of pitch, pauses, emphasis, energy/tone, endings, accent)",
+    "Gives voice direction a narrator or text-to-speech tool could use",
+    "Specifies the on-screen text / caption style concretely (font, colour and position)",
+    "Reports the view count correctly (about 2.4 billion, no overflowed negative)",
+    "Explains how the illusion was physically done (names a concrete technique)"
+   ]
+  },
+  {
+   "id": 3,
+   "name": "reel-and-x-common-formula",
+   "prompt": "these two clips went crazy viral, one's an insta reel and one's from X. dissect both and tell me the common formula i can use for my own short videos: https://www.instagram.com/reel/DKw2J6TMZd7/ https://x.com/elonmusk/status/1845458392531529991",
+   "expected_output": "Two blueprints (one per clip) plus a formula file comparing them: what's common, what differs, which performed better and why, and one merged template. Any download problem is explained with a next step; no browser cookies are used without asking.",
+   "files": [],
+   "assertions": [
+    "A blueprint Markdown file (100+ lines) was produced",
+    "Breaks down the opening seconds in detail (4+ table rows timed within the first 12 s)",
+    "Has a beat sheet with 4+ timestamped beats",
+    "States the cut rate as a number (cuts per minute or average shot length)",
+    "States the speaking pace in words per minute, or notes that there's no speech",
+    "Describes the sound design (music and/or sound effects)",
+    "Includes a fill-in-the-blanks template (5+ placeholders)",
+    "Includes ready-to-paste generation prompts (in code blocks)",
+    "Keeps quotes from the video short (no quoted passage over 25 words)",
+    "Doesn't reproduce the transcript (under 30% of its 6-word runs appear)",
+    "Separates the creator's personal signature from the reusable format",
+    "Analyses the voice beyond pace (4+ of pitch, pauses, emphasis, energy/tone, endings, accent)",
+    "Gives voice direction a narrator or text-to-speech tool could use",
+    "Specifies the on-screen text / caption style concretely (font, colour and position)",
+    "Breaks down both clips (the Instagram reel and the X video)",
+    "Writes a cross-video formula: what's shared, what differs, and a merged template",
+    "Compares how the two clips performed using engagement numbers",
+    "Doesn't use browser cookies without the user's permission"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "dissect",
+  "version": "1.1.0",
+  "description": "Reverse-engineer any video (YouTube, Shorts, TikTok, Instagram Reels, X and more) into a reusable Markdown blueprint: hook frame by frame, cuts and pacing, transcript, voice, sound, packaging, a fill-in script and ready-to-paste AI prompts.",
+  "author": {
+    "name": "0xpratzyy",
+    "url": "https://github.com/0xpratzyy"
+  },
+  "homepage": "https://github.com/0xpratzyy/dissect",
+  "repository": "https://github.com/0xpratzyy/dissect",
+  "license": "MIT",
+  "keywords": [
+    "video",
+    "youtube",
+    "shorts",
+    "tiktok",
+    "instagram",
+    "reels",
+    "content-creation",
+    "video-analysis",
+    "yt-dlp",
+    "whisper"
+  ]
+}
