@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.9"
-# dependencies = ["numpy", "pillow", "faster-whisper>=1.0", "praat-parselmouth"]
+# dependencies = [
+#   "numpy", "pillow", "faster-whisper>=1.0", "praat-parselmouth",
+#   "opencv-python-headless", "librosa", "soundfile", "scipy",
+#   "pyobjc-framework-Vision; sys_platform == 'darwin'",
+#   "pyobjc-framework-Quartz; sys_platform == 'darwin'",
+# ]
 # ///
 """dissect.py - measure a video so it can be turned into a reusable blueprint.
 
@@ -9,13 +14,23 @@ Give it a link (YouTube, Shorts, TikTok, Instagram, X/Twitter, Facebook, Vimeo, 
 yt-dlp supports) or a local video file. It writes <out>/<date>-<platform>-<slug>/ containing:
 
   facts.md            every measurement in readable form (start here)
-  sheets/*.jpg        labelled contact sheets: the hook (dense), every shot, the most-replayed moment, the cover
-  data/analysis.json  the same measurements, machine-readable
+  measured.md         the measured blueprint sections (shots in frames, camera, transitions, type, palette,
+                      brightness, sound grid), ready to paste into the blueprint template
+  sheets/*.jpg        labelled frame sheets: hook (first 3 s at 0.25 s), shots (one frame per shot), timeline (the
+                      whole film at fixed steps), transitions (every frame around each cut and change), plus
+                      most-replayed and cover
+  data/timeline.json  the frame-level timeline (v2.1): shots with in/out frames, transitions, camera moves, text
+                      events, palette, brightness, beat grid, cues, loudness
+  data/analysis.json  the v1 measurements, machine-readable
   data/transcript.*   the words with timings (.json) and as timestamped lines (.txt)
   data/info.json      trimmed platform metadata; data/comments.txt top comments (YouTube)
 
 The downloaded video and scratch files are deleted at the end unless --keep-video.
 Run it with uv so the Python dependencies install themselves:  uv run dissect.py <url-or-file> [options]
+
+Two more commands:
+  uv run dissect.py check <your-render.mp4> --ref <dissection folder>   score a rebuild against the reference
+  uv run dissect.py assemble <dissection folder>                        build the final blueprint from the draft
 
 Exit codes: 0 ok, 2 download failed, 3 login needed (rerun with cookies, ask the user first),
 4 no video in that post, 5 ffmpeg/ffprobe missing.
@@ -37,7 +52,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-VERSION = '1.1.0'
+VERSION = '2.0.0'
 DEPTHS = {  # frames on the shot sheets, dense hook window, whisper model
     'quick':    dict(max_frames=36,  hook_s=3.0, hook_fps=4, model='base'),
     'standard': dict(max_frames=72,  hook_s=3.0, hook_fps=4, model='small'),
@@ -460,7 +475,7 @@ def make_sheets(video, items, lay, raw_dir, out_dir, stem):
     return sheets
 
 
-def pick_frames(shots, steps, unsure, max_frames):
+def pick_frames(shots, steps, unsure, max_frames, fps=30.0):
     """Frames for the shot sheets: the middle of every shot, just after every step change, every ~4 s through long
     shots, then just after uncertain changes if there's room. Thinned evenly when there are too many, keeping shot
     middles longest. Returns [(label, time)]."""
@@ -484,11 +499,11 @@ def pick_frames(shots, steps, unsure, max_frames):
         if len(items) <= n:
             return items
         return [items[i] for i in sorted(set(np.linspace(0, len(items) - 1, n).round().astype(int)))]
-    keep = []
-    for group in (mids, after, fill, maybe):  # later groups only add frames that show something new
+    keep = thin(mids, max(max_frames, 240))   # one frame per shot, always (up to 240 shots)
+    for group in (after, fill, maybe):  # later groups only add frames that show something new
         new = [p for p in group if all(abs(p[1] - q[1]) > 0.5 for q in keep)]
         keep += thin(new, max_frames - len(keep))
-    return [(f'S{n}{mark} {ts(x)}', x) for n, x, mark in sorted(keep, key=lambda p: p[1])]
+    return [(f'S{n}{mark} {ts(x)} f{int(x * fps)}', x) for n, x, mark in sorted(keep, key=lambda p: p[1])]
 
 
 # ---------------------------------------------------------------- audio
@@ -842,7 +857,7 @@ def replay_peaks(hm, dur, full_dur=None):
 
 # ---------------------------------------------------------------- report
 
-def write_facts(path, A, tr, shot_words, sheet_list):
+def write_facts(path, A, tr, shot_words, sheet_list, T=None):
     m, p, pl = A['video'], A['pacing'], A['platform']
     L = [f"# Facts: {A['title']}", '',
          f"_Measured by dissect.py {VERSION} on {A['measured_at']}. Numbers are measurements; words in (brackets) are "
@@ -986,6 +1001,26 @@ def write_facts(path, A, tr, shot_words, sheet_list):
         L += ['', f"## Hook, word by word (first {hook_end:.0f} s)", '', ' · '.join(f"`{w[0]:.2f}` {w[2]}" for w in hw)]
         L += ['', '## Transcript', ''] + [f"[{ts(s_['start'])}] {s_['text']}" for s_ in tr['segments']]
 
+    if T:
+        S_ = T['shots']
+        kinds = {}
+        for s_ in S_[1:]:
+            k_ = (s_.get('transition_in') or {}).get('type') or 'cut'
+            kinds[k_] = kinds.get(k_, 0) + 1
+        hid = sum(1 for s_ in S_ for c_ in s_.get('internal_changes') or [] if c_.get('type') in ('cut', 'dip_to_dark', 'reframe'))
+        tp = (T.get('audio') or {}).get('tempo') or {}
+        moving = sum(1 for s_ in S_ if (s_.get('camera') or {}).get('move') not in (None, 'static'))
+        texts = sum(len(s_.get('text') or []) for s_ in S_)
+        L += ['', '## Timeline (frame level, v2.1)', '',
+              f"- {T['video']['frames']} frames at {T['video']['fps']} fps; transitions: "
+              + (', '.join(f'{v} {k}' for k, v in sorted(kinds.items(), key=lambda kv: -kv[1])) or 'none')
+              + (f'; {hid} hidden cuts/dips/reframes inside shots' if hid else ''),
+              f"- Camera or element moves in {moving} of {len(S_)} shots; {texts} on-screen text items read"
+              + (f"; cadence {T['video']['cadence']['label']}" if T['video'].get('cadence') else ''),
+              f"- Tempo: " + (f"{tp.get('bpm')} BPM, confidence {tp.get('confidence')}" if tp.get('bpm') else 'no steady pulse'),
+              '- Every number is in `measured.md` (ready-made blueprint sections) and `data/timeline.json`.']
+        if T.get('notes'):
+            L.append('- Notes: ' + ' · '.join(str(n)[:200] for n in T['notes'][:8]))
     L += ['', '## Sheets to look at', '']
     L += [f"- `sheets/{p_.name}`: {desc}" for p_, desc in sheet_list]
     path.write_text('\n'.join(L) + '\n', encoding='utf-8')
@@ -1008,7 +1043,17 @@ def selftest():
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Measure a video for the dissect skill.')
+    if len(sys.argv) > 1 and sys.argv[1] in ('check', 'assemble'):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        if sys.argv[1] == 'check':
+            import check
+            check.main(sys.argv[2:])
+        else:
+            import assemble
+            assemble.main(sys.argv[2:])
+        return
+    ap = argparse.ArgumentParser(description='Measure a video for the dissect skill. Also: "dissect.py check <render> '
+                                             '--ref <folder>" and "dissect.py assemble <folder>".')
     ap.add_argument('source', nargs='?', help='video link or local file')
     ap.add_argument('--depth', choices=sorted(DEPTHS), default='standard')
     ap.add_argument('--out', help='output folder (default: $DISSECT_OUT or ./dissections)')
@@ -1020,6 +1065,10 @@ def main():
     ap.add_argument('--cut-threshold', type=float, default=0.30, help='scene-change score that counts as a cut (default 0.30)')
     ap.add_argument('--keep-video', action='store_true', help='keep the downloaded video as source.<ext>')
     ap.add_argument('--no-comments', action='store_true', help='skip fetching YouTube comments')
+    ap.add_argument('--no-timeline', action='store_true', help='skip the frame-level timeline (v1 output only, faster)')
+    ap.add_argument('--timeline-minutes', type=float, default=10.0,
+                    help='measure the frame-level timeline over at most the first N minutes (default 10)')
+    ap.add_argument('--threads', type=int, default=2, help='threads for ffmpeg and OpenCV in the timeline pass (default 2)')
     ap.add_argument('--selftest', action='store_true', help='check dependencies and exit')
     ap.add_argument('--version', action='version', version=f'dissect {VERSION}')
     args = ap.parse_args()
@@ -1140,10 +1189,11 @@ def main():
         raw.mkdir()
         sheet_list = []
         hook_n = int(min(cfg['hook_s'], max(0.5, dur - 0.1)) * cfg['hook_fps'])
-        hook = [(f'{i / cfg["hook_fps"]:.2f}s', i / cfg['hook_fps']) for i in range(hook_n)]
+        hook = [(f'{i / cfg["hook_fps"]:.2f}s f{int(round(i / cfg["hook_fps"] * (meta["fps"] or 30)))}', i / cfg['hook_fps'])
+                for i in range(hook_n)]
         for p_, a, b in make_sheets(vid, hook, lay, raw, folder / 'sheets', 'hook'):
             sheet_list.append((p_, f"the opening at {cfg['hook_fps']} frames/s ({a} to {b})"))
-        for p_, a, b in make_sheets(vid, pick_frames(shots, steps, unsure, cfg['max_frames']), lay, raw,
+        for p_, a, b in make_sheets(vid, pick_frames(shots, steps, unsure, cfg['max_frames'], meta['fps'] or 30.0), lay, raw,
                                     folder / 'sheets', 'shots'):
             sheet_list.append((p_, f'the middle of each shot (S = shot number), "+" = just after a change inside the '
                                    f'shot, "?" = just after an uncertain change, extra frames through long shots: {a} to {b}'))
@@ -1168,6 +1218,37 @@ def main():
             ws = [w[2] for w in words if sh['start'] <= w[0] < sh['end']]
             shot_words[sh['n']] = ' '.join(ws)
 
+        T, tl_note = None, None
+        if not args.no_timeline:
+            log('measuring the frame-level timeline (transitions, camera, type, colour, sound grid) ...')
+            try:
+                sys.path.insert(0, str(Path(__file__).resolve().parent))
+                import timeline as tlm
+                T = tlm.measure_timeline(vid, meta, shots, words, bed, folder / 'sheets', work, log, font, ts, loud=loud,
+                                         source=info.get('webpage_url') or args.source, depth=args.depth,
+                                         threads=max(1, args.threads), max_s=args.timeline_minutes * 60)
+            except ImportError as e:
+                tl_note = f'timeline not measured: {e} (run with uv so opencv and librosa install)'
+            except Exception as e:  # noqa: BLE001 - the v1 outputs are still worth writing
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+                tl_note = f'timeline not measured: {e.__class__.__name__}: {e}'
+            if tl_note:
+                log(tl_note)
+        if T:
+            T['sheets'].update(hook=next((p_.name for p_, d_ in sheet_list if p_.name.startswith('hook')), None),
+                               hook_step=f"{1 / cfg['hook_fps']:.2f} s",
+                               shots=[p_.name for p_, _ in sheet_list if p_.name.startswith('shots')])
+            import plates
+            (folder / 'data' / 'timeline.json').write_text(json.dumps(T, indent=1, ensure_ascii=False), encoding='utf-8')
+            extra = re.findall(r'[A-Za-z]{3,}', ' '.join(str(info.get(k) or '') for k in ('title', 'uploader', 'channel', 'description')))
+            (folder / 'measured.md').write_text(plates.render(T, words, extra), encoding='utf-8')
+            tls = [folder / 'sheets' / n for n in T['sheets']['timeline']]
+            trs = [folder / 'sheets' / n for n in T['sheets']['transitions']]
+            sheet_list += [(p_, f"the whole film at {T['sheets']['timeline_step_s']} s steps (S = shot, f = frame)") for p_ in tls]
+            sheet_list += [(p_, '14 consecutive frames around each transition and change inside a shot, the change frame '
+                                'outlined') for p_ in trs]
+
         pl = trim_info(info)
         A = dict(dissect_version=VERSION, measured_at=dt.datetime.now().isoformat(timespec='seconds'),
                  source=info.get('webpage_url') or args.source, title=title, platform_name=info.get('extractor_key') or 'Local',
@@ -1177,7 +1258,7 @@ def main():
                  transcript={k: tr[k] for k in ('model', 'language', 'language_probability')} if tr else None,
                  speech=speech_stats(tr, dur) if tr else None, voice=pitch_stats(track, words),
                  emphasis=emphasis_words(words, rms_t, rms_db, track), bed=bed, tempo=tempo, cut_accents=acc,
-                 sheets=[str(p_.relative_to(folder)) for p_, _ in sheet_list])
+                 sheets=[str(p_.relative_to(folder)) for p_, _ in sheet_list], timeline_note=tl_note)
 
         (folder / 'data' / 'analysis.json').write_text(json.dumps(A, indent=1, ensure_ascii=False), encoding='utf-8')
         (folder / 'data' / 'info.json').write_text(json.dumps(pl, indent=1, ensure_ascii=False), encoding='utf-8')
@@ -1189,16 +1270,21 @@ def main():
             (folder / 'data' / 'comments.txt').write_text(
                 '\n'.join(f"[{c['likes']}]{' (creator)' if c['by_creator'] else ''} {c['text']}" for c in comments) + '\n',
                 encoding='utf-8')
-        write_facts(folder / 'facts.md', A, tr, shot_words, sheet_list)
+        write_facts(folder / 'facts.md', A, tr, shot_words, sheet_list, T)
 
         if args.keep_video:
             shutil.move(str(vid), str(folder / f'source{vid.suffix}'))
+        order = ('hook', 'shots', 'transitions', 'timeline', 'most-replayed', 'cover')
+        ordered = sorted((p_ for p_, _ in sheet_list), key=lambda p_: (next((i for i, o in enumerate(order) if p_.name.startswith(o)), 9), p_.name))
         result = dict(ok=True, folder=str(folder), facts=str(folder / 'facts.md'),
-                      sheets=[str(p_) for p_, _ in sheet_list],
+                      measured=str(folder / 'measured.md') if T else None,
+                      timeline=str(folder / 'data' / 'timeline.json') if T else None,
+                      sheets_in_reading_order=[str(p_) for p_ in ordered],
+                      draft=str(folder / f"{slugify(title, 40) or 'video'}.blueprint.draft.md") if T else None,
                       blueprint=str(folder / f"{slugify(title, 40) or 'video'}.blueprint.md"),
                       title=title, platform=A['platform_name'], duration_s=dur, shots=len(shots),
                       words=(A['speech'] or {}).get('words', 0),
-                      notes=[n for n in (tr_note,) if n])
+                      notes=[n for n in (tr_note, tl_note) if n])
     finally:
         shutil.rmtree(work, ignore_errors=True)
     print(json.dumps(result, indent=1, ensure_ascii=False))
