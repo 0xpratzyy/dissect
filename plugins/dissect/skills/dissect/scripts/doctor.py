@@ -46,6 +46,9 @@ INSTALL = {
                '*': 'install ffmpeg with your package manager (https://ffmpeg.org/download.html)'},
     'yt-dlp': {'mac': 'brew install yt-dlp', 'win': 'winget install yt-dlp.yt-dlp',
                '*': 'uv tool install "yt-dlp[default,curl-cffi]"   (or: pipx install yt-dlp)'},
+    'tesseract': {'mac': 'not needed on macOS (Apple Vision reads the text)', 'win': 'winget install UB-Mannheim.TesseractOCR',
+                  'apt': 'sudo apt install tesseract-ocr', 'dnf': 'sudo dnf install tesseract', 'pacman': 'sudo pacman -S tesseract',
+                  '*': 'install tesseract with your package manager'},
     'deno': {'mac': 'brew install deno', 'win': 'winget install DenoLand.Deno',
              '*': 'curl -fsSL https://deno.land/install.sh | sh'},
 }
@@ -78,9 +81,9 @@ def main():
             else:
                 rows.append(f'{"":<8} {"":<11} -> {fix}')
 
-    py_ok = sys.version_info >= (3, 9)
-    row(py_ok, 'python', platform.python_version() + ('' if py_ok else ' (need 3.9+)'),
-        'install Python 3.9+ from https://www.python.org or your package manager')
+    py_ok = sys.version_info >= (3, 10) or bool(shutil.which('uv'))
+    row(py_ok, 'python', platform.python_version() + ('' if sys.version_info >= (3, 10) else ' (uv brings its own 3.10+)' if py_ok else ' (need 3.10+)'),
+        'install Python 3.10+ from https://www.python.org or your package manager')
 
     uv = shutil.which('uv')
     row(bool(uv), 'uv', version([uv, '--version']) if uv else 'not found (installs the Python packages automatically)',
@@ -108,6 +111,19 @@ def main():
     js = next((n for n in ('deno', 'node', 'bun') if shutil.which(n)), None)
     row(bool(js), 'js runtime', js or 'none (YouTube may refuse some formats without one)', how('deno'), required=False)
 
+    if sys.platform == 'darwin':
+        row(True, 'text (OCR)', 'Apple Vision (built in; uv installs the pyobjc bridge)')
+    else:
+        tz = shutil.which('tesseract')
+        row(bool(tz), 'text (OCR)', version([tz, '--version']) if tz else 'none: on-screen text sizes and times are skipped',
+            how('tesseract'), required=False)
+    try:
+        free = shutil.disk_usage(Path.home()).free / 1e9
+        row(free >= 2, 'disk', f'{free:.1f} GB free (first run needs about 1.2 GB: packages and the speech model)',
+            'free up some disk space', required=False)
+    except OSError:
+        pass
+
     print('dissect doctor\n')
     print('\n'.join(rows))
     if missing:
@@ -125,7 +141,8 @@ def main():
         print(r.stdout.strip() or r.stderr.strip()[-2000:])
         if r.returncode:
             sys.exit(1)
-    print('\nReady. Whisper downloads its speech model the first time you dissect something.')
+    print('\nReady. Whisper downloads its speech model the first time you dissect something.\n'
+          'Commands: dissect.py <link> · dissect.py assemble <folder> · dissect.py check <render> --ref <folder>')
 
 
 if __name__ == '__main__':

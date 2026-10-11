@@ -116,3 +116,13 @@ Hard cut · jump cut (same shot, time removed) · punch-in cut · J-cut / L-cut 
 Separate these explicitly in every blueprint:
 - **Signature (theirs):** face, name, voice, catchphrases, recurring characters or bits, signature music, logo and brand palette, unique access (people, places, money).
 - **Format (reusable):** structure, beat timing, hook mechanics, pacing, caption system, shot grammar, sound design, packaging pattern.
+
+## Reading the timeline (v2)
+
+- **Transitions** (`transition_in.type`): `cut` (0 frames) · `dissolve` (two pictures blend) · `fade_from_black` / `fade_from_white` · `flash` (a short burst of light) · `whip` (directional blur and a fast shift) · `zoom` (scale flow through the change) · `wipe` (a moving edge) · `unknown` with "no visible cut" (the picture keeps moving: one continuous shot split by the detector). Hard cuts are reliable; whip versus zoom is right about 4 times in 5, so look at the transition strip.
+- **Changes inside a shot** (`internal_changes`): hidden `cut`s on dark frames, `dip_to_dark`, `flash`, `reframe` (a punch-in or jump), `focus_pull`. A film with no detected cuts can still be cut on black between phrases.
+- **Camera vs element motion**: `camera` is frame-wide motion (+x = content moves right, zoom per second > 1 = content grows); `element_motion` is something moving over a still frame, with its region and a box track every 0.5 s. A 3D object flying at a still camera can read as a push in.
+- **Cadence**: `ones` = a new picture every frame; `twos` = each held two frames (classic animation); "~25 fps" in a 30 fps file = some frames held.
+- **Type**: sizes are cap heights at 1080p; font size ≈ cap ÷ 0.71. The phone minimum is a cap height of 2% of the frame width (38 px at 1920×1080, 22 px at 1080×1920).
+- **Tempo confidence**: under 0.5 means no steady pulse to cut on; time edits to the cue sheet instead. Section levels are RMS dBFS of the whole mix, not LUFS.
+- **Rebuild scores** from `dissect.py check`: the original scores about 93–95 against its own timeline (measurement noise), a faithful rebuild 80+, a loose one around 60.

@@ -290,7 +290,8 @@ def lint(md, rd, film, flags, tl, warn, d='.'):
         warn.append(f'FIX recipe is {words_} words: keep it at 230 or fewer, and leave frame lists, cue lists and boxes to the JSON')
     mat = re.search(r'(?ims)^### [^\n]*(?:material|grade|shoot)[^\n]*card[^\n]*\n(.*?)(?=^##)', md)
     three_d = re.search(r'(?i)\b\d{2,3}\s?mm\b|\bf/\d|\barea lights?\b|\bprincipled\b|\bdepth of field\b', md)
-    if three_d and not (mat and re.search(r'\d\s?px\b', mat.group(1)) and re.search(r'(?i)\b2D\b|css', mat.group(1))
+    shoot_card = bool(re.search(r'(?im)^### [^\n]*(?:grade|shoot)[^\n]*card', md))
+    if three_d and not shoot_card and not (mat and re.search(r'\d\s?px\b', mat.group(1)) and re.search(r'(?i)\b2D\b|css', mat.group(1))
                         and re.search(r'(?i)blur|glow|vignette', mat.group(1))):
         warn.append('FIX 3D terms (lens mm, f-stop, area lights, depth of field) need 2D equivalents in the material card: '
                     'blur px at 1080p outside the focus box, glow radius and opacity, vignette')

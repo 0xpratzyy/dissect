@@ -100,6 +100,8 @@ def deliverable(w, h):
     for a, b, W, H in STD_ASPECTS:
         if abs(r - a / b) / (a / b) < 0.035:
             return W, H
+    if 0.50 <= r <= 0.59:   # phone captures a little off 9:16 (720×1364 and the like) deliver at 1080×1920
+        return 1080, 1920
     if r >= 1:
         return int(round(1080 * r / 2) * 2), 1080
     return 1080, int(round(1080 / r / 2) * 2)
@@ -112,6 +114,8 @@ def aspect_name(w, h, given=None):
         for a, b, _, _ in STD_ASPECTS:
             if abs(r - a / b) / (a / b) < 0.035:
                 return f'{a}:{b}'
+        if 0.50 <= r <= 0.59:
+            return '9:16'
     if given:
         return given
     if not w or not h:

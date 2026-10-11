@@ -23,7 +23,13 @@
     "Gives voice direction a narrator or text-to-speech tool could use",
     "Specifies the on-screen text / caption style concretely (font, colour and position)",
     "Covers only the requested opening ~3 minutes (no table timestamp past 3:15)",
-    "Uses YouTube audience data (views, likes, comments or most-replayed moments)"
+    "Uses YouTube audience data (views, likes, comments or most-replayed moments)",
+    "Writes data/timeline.json and measured.md, and the blueprint has the measured shot table with start and end frames",
+    "Lists the transition into each shot with its type and length in frames (plate 5)",
+    "Gives camera or element moves as numbers (travel %, scale, easing), not only names",
+    "Has a type spec with cap heights in px at 1080p and a phone minimum",
+    "Ships the frame sheets: hook, one frame per shot, transition strips and the timeline sheet",
+    "Assembles cleanly: dissect.py assemble reports no CONTRADICTION warnings"
    ]
   },
   {
@@ -48,7 +54,13 @@
     "Gives voice direction a narrator or text-to-speech tool could use",
     "Specifies the on-screen text / caption style concretely (font, colour and position)",
     "Reports the view count correctly (about 2.4 billion, no overflowed negative)",
-    "Explains how the illusion was physically done (names a concrete technique)"
+    "Explains how the illusion was physically done (names a concrete technique)",
+    "Writes data/timeline.json and measured.md, and the blueprint has the measured shot table with start and end frames",
+    "Lists the transition into each shot with its type and length in frames (plate 5)",
+    "Gives camera or element moves as numbers (travel %, scale, easing), not only names",
+    "Has a type spec with cap heights in px at 1080p and a phone minimum",
+    "Ships the frame sheets: hook, one frame per shot, transition strips and the timeline sheet",
+    "Assembles cleanly: dissect.py assemble reports no CONTRADICTION warnings"
    ]
   },
   {
@@ -75,7 +87,32 @@
     "Breaks down both clips (the Instagram reel and the X video)",
     "Writes a cross-video formula: what's shared, what differs, and a merged template",
     "Compares how the two clips performed using engagement numbers",
-    "Doesn't use browser cookies without the user's permission"
+    "Doesn't use browser cookies without the user's permission",
+    "Writes data/timeline.json and measured.md, and the blueprint has the measured shot table with start and end frames",
+    "Lists the transition into each shot with its type and length in frames (plate 5)",
+    "Gives camera or element moves as numbers (travel %, scale, easing), not only names",
+    "Has a type spec with cap heights in px at 1080p and a phone minimum",
+    "Ships the frame sheets: hook, one frame per shot, transition strips and the timeline sheet",
+    "Assembles cleanly: dissect.py assemble reports no CONTRADICTION warnings"
+   ]
+  },
+  {
+   "id": 4,
+   "name": "x-launch-film-rebuild-and-check",
+   "prompt": "i want to make a launch film for my fintech app exactly in the style of this one, give me something claude code can actually build from: https://x.com/solana/status/2107994265104339166 . then tell me how close this render is: ~/Downloads/refs-pack/ab3008/norra-south.mp4",
+   "expected_output": "A v2 blueprint (<slug>.blueprint.md) plus <slug>.timeline.json with frame-exact shots (1199 frames at 30 fps), the karaoke hold-line captions, the blur swap at f598, three benefit words, brand placeholders and a recipe prompt; then a check report scoring the render (about 80/100) with frame-level fixes.",
+   "files": [],
+   "assertions": [
+    "A blueprint Markdown file (300+ lines) and a <slug>.timeline.json were produced",
+    "The shot table gives frames at 30 fps and the film's 1199-frame length (not 1200)",
+    "Describes the hold-line captions as word-by-word lit (karaoke) text that scrolls",
+    "Names three benefit words, not two, with the swap to the third around 32.3 s",
+    "Treats the transition at frame 598 as a blur swap of the text (not a camera whip), or flags the label as low confidence",
+    "Gives the big scale-down on the first benefit word as keyframes or start and end frames with easing",
+    "Says the reference's section levels are RMS, not LUFS, and gives a loudness target per platform",
+    "Recipe prompt uses {{PRODUCT}}, {{BRAND_FONT}}, {{BRAND_BG}}, {{BRAND_ACCENTS}}, {{LOGO}}, {{CTA_URL}} and no reference hex colours",
+    "Does not tell the builder to follow the reference's colour while also telling them not to use its palette",
+    "Runs dissect.py check on the render and reports a score out of 100 with fixes that name frames"
    ]
   }
  ]

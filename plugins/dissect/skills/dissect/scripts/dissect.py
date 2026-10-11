@@ -1030,7 +1030,7 @@ def write_facts(path, A, tr, shot_words, sheet_list, T=None):
 
 def selftest():
     out = {'dissect': VERSION, 'python': sys.version.split()[0]}
-    for mod in ('numpy', 'PIL', 'faster_whisper', 'parselmouth'):
+    for mod in ('numpy', 'PIL', 'faster_whisper', 'parselmouth', 'cv2', 'librosa', 'soundfile', 'scipy'):
         try:
             m = __import__(mod)
             out[mod] = getattr(m, '__version__', getattr(m, 'VERSION', 'ok'))
@@ -1039,6 +1039,11 @@ def selftest():
     out['ffmpeg'] = shutil.which('ffmpeg') or 'missing'
     out['ffprobe'] = shutil.which('ffprobe') or 'missing'
     out['yt-dlp runners'] = [' '.join(r) for r in ytdlp_runners()] or 'none'
+    try:
+        import Vision  # noqa: F401
+        out['ocr'] = 'apple vision'
+    except Exception:
+        out['ocr'] = 'tesseract' if shutil.which('tesseract') else 'none (on-screen text is skipped)'
     print(json.dumps(out, indent=1))
 
 
