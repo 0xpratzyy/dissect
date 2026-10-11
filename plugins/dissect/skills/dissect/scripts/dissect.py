@@ -1043,9 +1043,17 @@ def selftest():
 
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] in ('check', 'assemble'):
+    if len(sys.argv) > 1 and sys.argv[1] in ('check', 'assemble', 'plates'):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
-        if sys.argv[1] == 'check':
+        if sys.argv[1] == 'plates':   # re-render measured.md from data/timeline.json (after an upgrade)
+            import plates
+            d = Path(sys.argv[2]).expanduser()
+            T = json.loads((d / 'data' / 'timeline.json').read_text(encoding='utf-8'))
+            tp = d / 'data' / 'transcript.json'
+            words = [w for s in json.loads(tp.read_text(encoding='utf-8'))['segments'] for w in s['words']] if tp.exists() else []
+            (d / 'measured.md').write_text(plates.render(T, words), encoding='utf-8')
+            print(json.dumps({'ok': True, 'measured': str(d / 'measured.md')}))
+        elif sys.argv[1] == 'check':
             import check
             check.main(sys.argv[2:])
         else:

@@ -15,7 +15,7 @@ import json, os, re, sys
 from plates import parse_blocks, Film
 
 PLATE_OF = {'hook_sheet': 3, 'shots': 4, 'sheets': 4, 'camera': 5, 'transitions': 5, 'type': 6, 'palette': 6,
-            'brightness': 6, 'sound': 8}
+            'brightness': 6, 'speech': 7, 'sound': 8}
 SLOTS = ['{{PRODUCT}}', '{{BRAND_FONT}}', '{{BRAND_BG}}', '{{BRAND_ACCENTS}}', '{{LOGO}}', '{{CTA_URL}}']
 FLAGS = ('fixed', 'scales', 'optional')
 
@@ -134,7 +134,7 @@ def check_recipe(rp, film, tl, warn):
     words = len(rp.split())
     if words < 120 or words > 360:
         warn.append(f'recipe: {words} words (want 150-300)')
-    for s in SLOTS:
+    for s in ([] if '{{TOPIC}}' in rp else SLOTS):
         if s not in rp:
             warn.append(f'recipe: no {s}')
     if 'timeline.json' not in rp:
@@ -205,7 +205,7 @@ def contradictions(text, film):
     told to hold the end card through frame 900 while the picture fades from about frame 818)."""
     out = []
     fps = film.fps
-    nfr = int(round(film.dur * fps))
+    nfr = film.nfr
     fo = film.fade_out()
     ff = int(round(fo[0] * fps)) if fo else None
     tol = max(2, int(round(0.25 * fps)))
@@ -275,7 +275,9 @@ def lint(md, rd, film, flags, tl, warn, d='.'):
     left += sorted(set(re.findall(r'<(length|aspect|REF id|format name|product|brand)>', md)))
     if left:
         warn.append('unfilled placeholders ' + ', '.join(f'<{x}>' for x in left[:6]))
-    used = set(re.findall(r'\{\{([A-Z][A-Z0-9_]*)\}\}', md + ' ' + rp))
+    # script-template fill-ins (plates 9, 10 and 12) are blanks for the writer's own words, not brand slots
+    md_slots = re.sub(r'(?ms)^## (?:9|10|12)\.[^\n]*\n.*?(?=^## )', '', md)
+    used = set(re.findall(r'\{\{([A-Z][A-Z0-9_]*)\}\}', md_slots + ' ' + rp))
     p15 = re.search(r'(?ms)^## 15\.[^\n]*\n(.*?)(?=^## |\Z)', md)
     declared = set(re.findall(r'\{\{([A-Z][A-Z0-9_]*)\}\}', p15.group(1))) if p15 else set()
     howto = re.search(r'(?ms)^## How to use this blueprint\n(.*?)(?=^## )', md)

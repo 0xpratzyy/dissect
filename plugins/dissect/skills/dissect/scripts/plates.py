@@ -288,7 +288,9 @@ class Film:
         self.ref = 'the reference'
         self.extra_words = {w.lower() for w in extra_words}
         self.fpsl = f'{self.fps:g}'
+        self.nfr = int(v.get('frames') or round(self.dur * self.fps))   # decoded frames (the count to build to)
         self.words = sorted((float(w[0]), float(w[1])) for w in (words or []) if len(w) >= 4 and (w[3] or 0) >= 0.4)
+        self.raw_words = [w for w in (words or []) if len(w) >= 3]
 
     # -- measured facts shared by the cue sheet, the timing facts for the writer, and the prose check
     def fade_out(self):
@@ -424,7 +426,7 @@ class Film:
         about cuts, holds, fades and brightness has to agree with it."""
         S, fps = self.shots, self.fps
         f = lambda t: int(round(t * fps))
-        L = [f'Timing facts at {self.fpsl} fps ({int(round(self.dur * fps))} frames, 0–{int(round(self.dur * fps)) - 1}). '
+        L = [f'Timing facts at {self.fpsl} fps ({self.nfr} frames, 0–{self.nfr - 1}). '
              f'Every inferred statement about cuts, holds, fades or brightness must agree with these.']
         cuts = [s for s in S[1:] if (s.get('transition_in') or {}).get('type') == 'cut']
         cont = [s for s in S[1:] if (s.get('transition_in') or {}).get('type') == 'unknown']
@@ -551,7 +553,7 @@ class Film:
         head = ['#', 'in–out (s)', f'frames @{self.fpsl} (first–last · count)', 'dur (s)', 'transition in'] + \
             (['changes inside'] if any(x.get('internal_changes') for x in S) else []) + ['scales (inferred)']
         lens = [s['dur'] for s in S if s.get('dur')]
-        total = f'{self.dur:.2f} s = {int(round(self.dur * self.fps))} frames at {self.fpsl} fps'
+        total = f'{self.dur:.2f} s = {self.nfr} frames at {self.fpsl} fps (frames 0–{self.nfr - 1})'
         if len(S) == 1 and self.hidden_cuts():
             lead = (f'One detected shot with {len(self.hidden_cuts())} hidden hard cut{"s" if len(self.hidden_cuts()) > 1 else ""} inside it '
                     f'(see "changes inside"), {total}.')
@@ -1153,6 +1155,36 @@ class Film:
         L += ['', '**Curve facts:** ' + ' · '.join(facts) + '.']
         return block('brightness', 6, '\n'.join(L))
 
+    # -- plate 7
+    def speech_block(self):
+        """Per-phrase speech times in frames: narration-led rebuilds cut and caption on these."""
+        W_ = self.raw_words
+        if not W_:
+            return block('speech', 7, '### Speech timing (measured)\n\nNo speech in this film.')
+        phrases, cur = [], [W_[0]]
+        for a, b in zip(W_, W_[1:]):
+            if b[0] - a[1] >= 0.25 or re.search(r'[.!?,;:…]$', str(a[2])) or len(cur) >= 12:
+                phrases.append(cur)
+                cur = []
+            cur.append(b)
+        phrases.append(cur)
+        fps = self.fps
+        rows = []
+        for i, ph in enumerate(phrases[:80], 1):
+            a, b = float(ph[0][0]), float(ph[-1][1])
+            txt = ' '.join(str(w[2]).strip() for w in ph)
+            wps = len(ph) / max(0.1, b - a)
+            rows.append([i, f'{a:.2f}–{b:.2f}', f'{int(round(a * fps))}–{int(round(b * fps))}', shot_at(self.shots, a) if self.shots else '–',
+                         len(ph), f'{wps:.1f}', f'"{short_text(txt, 7, 44)}"'])
+        L = ['### Speech timing (measured)', '',
+             f'Each spoken phrase (split at pauses of 0.25 s or more and at punctuation) with its times and frames at {self.fpsl} fps, '
+             f'from the transcript\'s word timings. Captions and cuts in a narration-led film land on these; the words are '
+             f'truncated here (the full transcript is in data/transcript.txt, for reference only).', '',
+             table(['#', 'time (s)', f'frames @{self.fpsl}', 'shot', 'words', 'words/s', 'starts with'], rows)]
+        if len(phrases) > 80:
+            L += ['', f'… {len(phrases) - 80} more phrases in data/transcript.json.']
+        return block('speech', 7, '\n'.join(L))
+
     # -- plate 8
     def sound_block(self):
         a = self.tl.get('audio') or {}
@@ -1237,7 +1269,7 @@ class Film:
                 rows.append([s_.get('label') or '–', f"{secs(s_.get('start'), 1)}–{secs(s_.get('end'), 1)}", shs,
                              f"{num(s_.get('rms_db'), 0)} dB" if s_.get('rms_db') is not None else '–'])
             L += ['', '**Sections** (by energy of the whole mix' + (', voice included' if self.words else '') + '):', '',
-                  table(['section', 'time (s)', 'shots', 'level (RMS)'], rows)]
+                  table(['section', 'time (s)', 'shots', 'level (RMS dBFS, not LUFS)'], rows)]
         en = a.get('energy') or {}
         rms, est = en.get('rms_db') or [], en.get('step_s') or 0.5
         if rms:
@@ -1311,7 +1343,7 @@ def render(tl, words=None, extra_words=()):
             f'by `dissect.py assemble`. Blocks with plate=0 are for the writer only. -->')
     at = f.aspect_table()
     parts = [head, block('facts', 0, f.timing_facts())] + ([block('aspect', 0, at)] if at else []) + [f.hook_sheet(), f.shots_block(), f.sheets_block(), f.camera_block(),
-             f.transitions_block(), f.type_block(), f.palette_block(), f.brightness_block(), f.sound_block()]
+             f.transitions_block(), f.type_block(), f.palette_block(), f.brightness_block(), f.speech_block(), f.sound_block()]
     return '\n\n'.join(parts) + '\n'
 
 
