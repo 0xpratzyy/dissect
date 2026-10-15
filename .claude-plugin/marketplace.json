@@ -10,7 +10,7 @@
     {
       "name": "dissect",
       "description": "Reverse-engineer any video (YouTube, Shorts, TikTok, Instagram Reels, X and more) into a frame-accurate blueprint: every cut and transition in frames, camera moves, type sizes, palette, beat grid and cues, transcript and voice, frame sheets, a timeline JSON and ready-to-paste build prompts. Then score your rebuild against it.",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "source": "./plugins/dissect",
       "category": "productivity",
       "keywords": [
