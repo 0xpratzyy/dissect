@@ -4,7 +4,7 @@ description: Reverse-engineer any online video into a reusable, frame-accurate b
 license: MIT
 compatibility: Needs internet access, ffmpeg, and uv (or Python 3.10+ with numpy, pillow, faster-whisper, praat-parselmouth, opencv-python-headless, librosa, soundfile and scipy). yt-dlp is fetched on demand if missing. On-screen text is read with Apple Vision on macOS, or tesseract elsewhere if installed. scripts/doctor.py checks everything and prints install commands.
 metadata:
-  version: "2.0.1"
+  version: "2.0.2"
 ---
 
 # Dissect

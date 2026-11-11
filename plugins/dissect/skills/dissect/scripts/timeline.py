@@ -33,7 +33,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 
-VERSION = '2.1.0'
+VERSION = '2.1.1'
 TIMELINE_VERSION = 2.1
 
 AN_LONG = 480            # camera / blur / cadence frames: long side in px
@@ -2258,6 +2258,13 @@ def measure_timeline(vid, meta, v1_shots, words, bed, sheets_dir, work, log, fon
     if nfr < 2:
         raise Fail(7, 'could not decode frames')
     shots[-1]['ef'] = nfr
+    # The picture ends at the last decoded frame. The file can run longer (an audio tail, container padding); from here
+    # on dur is the picture's length, so duration_s, the last shot's end and the frame count all agree.
+    file_dur = dur
+    dur = nfr / fps
+    if file_dur - dur > max(0.25, 2 / fps):
+        notes.append(f'the picture ends at {dur:.2f} s; the file runs to {file_dur:.2f} s (sound or padding after the '
+                     f'last frame), and the timeline covers the picture only')
     log(f'pass A took {time.time() - t_a:.1f} s')
 
     bound_info = []
@@ -2474,8 +2481,8 @@ def measure_timeline(vid, meta, v1_shots, words, bed, sheets_dir, work, log, fon
 
     return dict(
         version=TIMELINE_VERSION, source=source, measured_at=dt.datetime.now().isoformat(timespec='seconds'),
-        video=dict(width=W, height=H, fps=r(fps, 3), duration_s=r(dur), aspect=meta.get('aspect'), frames=nfr,
-                   cadence=cad),
+        video=dict(width=W, height=H, fps=r(fps, 3), duration_s=r(dur), file_duration_s=r(file_dur),
+                   aspect=meta.get('aspect'), frames=nfr, cadence=cad),
         shots=out_shots,
         brightness=brightness,
         audio=audio,
